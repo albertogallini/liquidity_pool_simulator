@@ -47,6 +47,5 @@ pub async fn kafka_producer() {
 
     }
 
-    
-    
 }
+

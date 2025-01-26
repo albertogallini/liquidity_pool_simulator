@@ -1,7 +1,7 @@
 use rdkafka::config::ClientConfig;
 use rdkafka::consumer::{ Consumer, StreamConsumer};
 use ::futures::StreamExt;
-use rdkafka::Message;
+use rdkafka::{ Message};
 
 
 use std::sync::{Arc, Mutex};
@@ -15,13 +15,14 @@ struct Pool {
 
 
 
-async fn kafka_consumer(pool: Arc<Mutex<Pool>>) {
+async fn kafka_consumer(pool: Arc<Mutex<Pool>>, client_id: &str) {
     // Configure the consumer
     let consumer: StreamConsumer = ClientConfig::new()
         .set("bootstrap.servers", "localhost:9092") // Adjust this to your Kafka broker's address
         .set("group.id", "my_group")
         .set("enable.auto.commit", "false")
         .set("auto.offset.reset", "earliest")
+        .set("client.id", client_id)
         .create()
         .expect("Consumer creation error");
 
@@ -31,6 +32,7 @@ async fn kafka_consumer(pool: Arc<Mutex<Pool>>) {
     // Create a stream from the consumer
     let mut stream = consumer.stream();
     
+    println!("consumer {:?} - Waiting for messages...", client_id);
 
     loop {
         // Await the next message from the stream
@@ -96,10 +98,11 @@ pub async fn consume() {
 
     let mut handles = vec![];
 
-    for _ in 0..10 {
+    for i in 0..10 {
         let pool_clone = Arc::clone(&pool);
+        let client_id = format!("client_{}", i);
         handles.push(tokio::spawn(async move {
-                kafka_consumer(pool_clone).await;
+                kafka_consumer(pool_clone,&client_id).await;
             }
         ));
     };
